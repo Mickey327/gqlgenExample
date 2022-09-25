@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/Mickey327/graphqlapp/pkg/postgres"
 	"github.com/gorilla/websocket"
@@ -8,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -30,11 +33,22 @@ func main() {
 	if err != nil {
 		log.Fatal("Couldn't create database")
 	}
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
 	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{Postgres: database}}))
-
-	srv.AddTransport(&transport.Websocket{Upgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
-		return true
-	}}})
+	srv.AddTransport(transport.Options{})
+	srv.AddTransport(transport.GET{})
+	srv.AddTransport(transport.POST{})
+	srv.AddTransport(transport.MultipartForm{})
+	srv.SetQueryCache(lru.New(1000))
+	srv.Use(extension.Introspection{})
+	srv.Use(extension.AutomaticPersistedQuery{
+		Cache: lru.New(100),
+	})
+	srv.AddTransport(transport.Websocket{KeepAlivePingInterval: 10 * time.Second, Upgrader: upgrader})
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
 

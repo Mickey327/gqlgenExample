@@ -30,6 +30,7 @@ func (r *mutationResolver) AddBook(ctx context.Context, book model.BookInput) (b
 		}
 		return false, err
 	}
+	log.Println("INSERTED BOOK")
 	return true, nil
 }
 

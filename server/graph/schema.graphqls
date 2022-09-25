@@ -8,7 +8,7 @@ type Book {
 input BookInput {
 	title: String!
 	description: String!
-  authorID: ID!
+    authorID: ID!
 }
 
 type Author {
